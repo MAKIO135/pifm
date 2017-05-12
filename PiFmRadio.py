@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import subprocess, signal, time
+import os, subprocess, signal, time
 import RPi.GPIO as GPIO
 
 station = 96.1
@@ -8,14 +8,6 @@ station = 96.1
 def play_sound( filename, channel=103.3 ):
     subprocess.Popen( [ "./pifm", filename, str(channel) ] )
     return
-
-def reboot():
-    print "goingToReboot"
-    command = "/usr/bin/sudo /sbin/shutdown -r now"
-    import subprocess
-    process = subprocess.Popen( command.split(), stdout=subprocess.PIPE )
-    output = process.communicate()[ 0 ]
-    print output
 
 GPIO.setmode( GPIO.BCM )
 
@@ -32,7 +24,18 @@ while True:
         time.sleep( 1 )
 
     elif tmp_val == 0 and btn_val == 1:
-        GPIO.cleanup()
-        reboot()
+        # kill pifm process
+        p = subprocess.Popen( [ 'ps', '-A' ], stdout=subprocess.PIPE )
+        out, err = p.communicate()
+
+        for line in out.splitlines():
+            if 'pifm' in line:
+                # print line
+                pid = int( line.split( None, 1 )[ 0 ] )
+                os.kill( pid, signal.SIGKILL )
+
+        # clear GPIO4
+        os.system( "echo  4 > /sys/class/gpio/export" )
+        os.system( "echo  4 > /sys/class/gpio/unexport" )
 
     btn_val = tmp_val
